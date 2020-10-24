@@ -1,0 +1,102 @@
+BREAK ON
+$ = SetConsole("Show")
+$ = SetOption("ASCII", "ON")
+$ = SetOption("WrapAtEOL", "ON")
+CLS
+
+$FFMpegPath = Chr(34) + "E:\jaz\Utilities\FFmpeg\bin\ffmpeg.exe" + Chr(34)
+$Quality = "-ab 320k"
+;$Quality = "-aq 0" -- This is VBR 0
+
+DIM $Dir
+DIM $Ext
+$Dir = @SCRIPTDIR
+$Ext = "mkv" ;Change to flac, wav, etc. if needed
+
+FindFiles($Dir, $Ext)
+
+?
+"Done!"
+Get$
+
+FUNCTION FindFiles($BaseDirectory, $Extension)
+	$BaseDirectory = AppendBackslashIfNeeded($BaseDirectory)
+	$FileOrDirectory = Dir($BaseDirectory)
+	
+	$FolderCreated = 0
+
+	WHILE @ERROR = 0 AND $FileOrDirectory
+		IF IsValidDirectory($FileOrDirectory)			
+			FindFiles($FileOrDirectory, $Extension)
+		ENDIF		
+
+		IF IsValidFile($FileOrDirectory) AND CheckExtension($FileOrDirectory, $Extension)
+			$OutputPath = @SCRIPTDIR + "\Output\"
+			
+			IF IsRelativePath($BaseDirectory)
+				$OutputPath = $OutputPath + $BaseDirectory
+			ENDIF
+			
+			IF NOT $FolderCreated
+				$FolderCreated = 1
+				SHELL "cmd /c mkdir " + Chr(34) + $OutputPath + Chr(34)
+			ENDIF
+			
+			SHELL "cmd /c " + Chr(34) + $FFMpegPath + " -i " + Chr(34) + $BaseDirectory + $FileOrDirectory + Chr(34) + " -acodec libmp3lame " + $Quality + " " + Chr(34) + $OutputPath + RemoveExtension($FileOrDirectory) + ".mp3" + Chr(34) + Chr(34)
+		ENDIF
+
+		IF @ERROR = 0
+			$FileOrDirectory = Dir()
+		ENDIF
+	LOOP
+ENDFUNCTION
+
+FUNCTION IsValidDirectory($DirectoryToCheck)
+	$IsValidDirectory = 0
+	IF $DirectoryToCheck <> "." AND $DirectoryToCheck <> ".." AND (GetFileAttr($TraceFolder + $DirectoryToCheck) & 16)
+		$IsValidDirectory = 1
+	ENDIF
+ENDFUNCTION
+
+FUNCTION IsValidFile($FileToCheck)
+	$IsValidFile = 0
+	IF $FileToCheck <> "." AND $FileToCheck <> ".." AND NOT (GetFileAttr($TraceFolder + $FileToCheck) & 16)
+		$IsValidFile = 1
+	ENDIF
+ENDFUNCTION
+
+FUNCTION IsRelativePath($PathToCheck)
+	$IsRelativePath = 0
+	IF (Len($PathToCheck) > 0) AND (SubStr($PathToCheck, 2, 2) <> ":\") AND (SubStr($PathToCheck, 1, 2) <> "\\")
+		$IsRelativePath = 1
+	ENDIF
+ENDFUNCTION
+
+FUNCTION CheckExtension($FileToCheck, $CorrectExtension)
+	$CheckExtension = 0
+	$Extension = ""
+	
+	IF (InStr($FileToCheck,"."))
+		$Extension = Right($FileToCheck, - InStrRev($FileToCheck, "."))
+	ENDIF
+	
+	IF ($Extension = $CorrectExtension)
+		$CheckExtension = 1
+	ENDIF
+ENDFUNCTION
+
+FUNCTION RemoveExtension($FileToRemoveExtension)
+	$RemoveExtension = $FileToRemoveExtension
+	
+	IF (InStr($FileToRemoveExtension,"."))
+		$RemoveExtension = Left($FileToRemoveExtension, InStrRev($FileToRemoveExtension, ".") - 1)
+	ENDIF
+ENDFUNCTION
+
+FUNCTION AppendBackslashIfNeeded($DirectoryToCheck)
+	$AppendBackslashIfNeeded = $DirectoryToCheck
+	
+	IF SubStr($DirectoryToCheck, Len($DirectoryToCheck)) <> "\"
+		$AppendBackslashIfNeeded = $AppendBackslashIfNeeded + "\"
+	ENDIF
+ENDFUNCTION
